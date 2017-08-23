@@ -1,7 +1,9 @@
 #coding: utf-8
 from __future__ import print_function
 
-import csv, json, copy, re, argparse, os, urllib2
+import csv, json, copy, re, argparse, os
+
+from six.moves import range, urllib
 
 import numpy, scipy, fastcluster, sklearn
 import scipy.cluster.hierarchy as hcluster
@@ -14,7 +16,7 @@ DISTANCES = {"numeric": ["braycurtis", "canberra", "chebyshev", "cityblock", "co
               "binary": ["dice","hamming","jaccard","kulsinski","matching","rogerstanimoto","russellrao","sokalmichener","sokalsneath","yule"]}
 
 class Dendrogram():
-    """Class which handles the generation of cluster heatmap format of clustered data. 
+    """Class which handles the generation of cluster heatmap format of clustered data.
     As an input it takes a Cluster instance with clustered data."""
 
     def __init__(self, clustering):
@@ -66,7 +68,7 @@ class Dendrogram():
                 dendrogram["nodes"][n] = node
 
         for n in node_id2node:
-             if node_id2node[n]["count"] != 1:
+            if node_id2node[n]["count"] != 1:
                 dendrogram["nodes"][n] = node_id2node[n]
 
         return dendrogram
@@ -93,14 +95,14 @@ class Dendrogram():
                 node_id2node[node["right_child"]]["parent"] = n
 
         for n in node_id2node:
-             if not n in dendrogram["nodes"]:
+            if not n in dendrogram["nodes"]:
                 dendrogram["nodes"][n] = node_id2node[n]
 
         return dendrogram
 
     def create_cluster_heatmap(self, compress=False, compressed_value="median", write_data=True):
         """Creates cluster heatmap representation in inchlib format. By setting compress parameter to True you can
-        cut the dendrogram in a distance to decrease the row size of the heatmap to specified count. 
+        cut the dendrogram in a distance to decrease the row size of the heatmap to specified count.
         When compressing the type of the resulted value of merged rows is given by the compressed_value parameter (median, mean).
         When the metadata are nominal (text values) the most frequent is the result after compression.
         By setting write_data to False the data features won't be present in the resulting format."""
@@ -121,9 +123,9 @@ class Dendrogram():
             self.dendrogram["data"]["feature_names"] = [h for h in self.header]
         elif self.header and not write_data:
             self.dendrogram["data"]["feature_names"] = []
-        
+
         if self.axis == "both" and len(self.cluster_object.column_clustering):
-            column_dendrogram = hcluster.to_tree(self.cluster_object.column_clustering)            
+            column_dendrogram = hcluster.to_tree(self.cluster_object.column_clustering)
             self.dendrogram["column_dendrogram"] = self.__get_column_dendrogram__()
 
     def __compress_data__(self):
@@ -134,7 +136,7 @@ class Dendrogram():
             "median": lambda values: [round(numpy.median(value), 3) for value in values],
             "mean": lambda values: [round(numpy.average(value), 3) for value in values],
         }
-        
+
         for n in self.dendrogram["data"]["nodes"]:
             node = self.dendrogram["data"]["nodes"][n]
 
@@ -153,7 +155,7 @@ class Dendrogram():
                     if not "objects" in self.dendrogram["data"]["nodes"][node_id]:
                         self.dendrogram["data"]["nodes"][node_id]["objects"] = []
                         self.dendrogram["data"]["nodes"][node_id]["features"] = []
-                    
+
                     self.dendrogram["data"]["nodes"][node_id]["objects"].extend(objects)
 
                     if data:
@@ -198,7 +200,7 @@ class Dendrogram():
         print("Calculating distance treshold for cluster compression...")
         if cluster_count >= self.tree.count:
             return -1
-        
+
         i = 0
         count = cluster_count + 1
         test_step = self.tree.dist/2
@@ -257,15 +259,15 @@ class Dendrogram():
         lib2url = {"inchlib-1.1.0.js": "http://localhost:8000/static/js/inchlib-1.1.0.js",
                     "jquery-2.0.3.min.js": "http://localhost:8000/static/js/jquery-2.0.3.min.js",
                     "kinetic-v5.1.0.min.js": "http://localhost:8000/static/js/kinetic-v5.1.0.min.js"}
-        
+
         for lib, url in lib2url.items():
             try:
-                source = urllib2.urlopen(url)
+                source = urllib.request.urlopen(url)
                 source_html = source.read()
 
                 with open(os.path.join(htmldir, lib), "w") as output:
                     output.write(source_html)
-            except urllib2.URLError, e:
+            except urllib.error.URLError as e:
                 raise Exception("\nCan't download file {}.\nPlease check your internet connection and try again.\nIf the error persists there can be something wrong with the InCHlib server.\n".format(url))
 
         with open(os.path.join(htmldir, "inchlib.html"), "w") as output:
@@ -303,13 +305,13 @@ class Dendrogram():
         if header:
             metadata_header = rows[0][1:]
             data_start = 1
-        
+
         for row in rows[data_start:]:
             metadata[str(row[0])] = [r for r in row[1:]]
 
         return metadata, metadata_header
 
-        
+
     def __read_metadata_file__(self, metadata_file, delimiter, header):
         csv_reader = csv.reader(open(metadata_file, "r"), delimiter=delimiter)
         metadata_header = []
@@ -320,7 +322,7 @@ class Dendrogram():
         if header:
             metadata_header = rows[0][1:]
             data_start = 1
-        
+
         for row in rows[data_start:]:
             metadata_id = str(row[0])
             metadata[metadata_id] = [r for r in row[1:]]
@@ -372,7 +374,7 @@ class Dendrogram():
 
         self.dendrogram["alternative_data"] = {}
         self.alternative_data_header = False
-        
+
         if header:
             self.alternative_data_header = alternative_data[0][1:]
             self.dendrogram["alternative_data"]["feature_names"] = self.alternative_data_header
@@ -416,7 +418,7 @@ class Dendrogram():
             for leaf_id, leaf in leaves.items():
                 try:
                     node2additional_data[leaf_id] = additional_data[leaf["objects"][0]]
-                except Exception, e:
+                except Exception as e:
                     continue
         else:
             compressed_value2fnc = {
@@ -430,7 +432,7 @@ class Dendrogram():
                 for item in leaves[leaf]["objects"]:
                     try:
                         objects.append(additional_data[item])
-                    except Exception, e:
+                    except Exception as e:
                         continue
 
                 cols = zip(*objects)
@@ -444,10 +446,10 @@ class Dendrogram():
                             value = compressed_value2fnc[compressed_value](col)
                         except ValueError:
                             value = compressed_value2fnc["frequency"](col)
-                    
+
                     else:
                         raise Exception("Unkown type of metadata_compressed_value: {}. Possible values are: median, mean, frequency.".format(self.metadata_compressed_value))
-        
+
                     row.append(value)
 
                 node2additional_data[leaf] = row
@@ -482,7 +484,7 @@ class Cluster():
         if self.header:
             self.header = rows[0][1:]
             data_start = 1
-        
+
         self.data_names = [str(row[0]) for row in rows[data_start:]]
         self.data = [row[1:] for row in rows[data_start:]]
         self.original_data = copy.deepcopy(self.data)
@@ -493,11 +495,11 @@ class Cluster():
 
         self.original_data = [[float(val) if not val is None else None for val in r] for r in self.original_data]
         self.data = [[float(val) if not val is None else None for val in r] for r in self.data]
-        
+
     def __impute_missing_values__(self, data):
-        datatype2impute = {"numeric": {"strategy":"mean", 
-                                        "value": lambda x: round(float(value), 3)}, 
-                           "binary": {"strategy":"most_frequent", 
+        datatype2impute = {"numeric": {"strategy":"mean",
+                                        "value": lambda x: round(float(value), 3)},
+                           "binary": {"strategy":"most_frequent",
                                       "value": lambda x: int(value)}
                            }
 
@@ -505,7 +507,7 @@ class Cluster():
             raise Exception("".join(["You can choose only from data types: ", ", ".join(DISTANCES.keys())]))
 
         missing_values_indexes = []
-        
+
         for i, row in enumerate(self.data):
             missing_values_indexes.append([j for j, v in enumerate(row) if v == self.missing_value])
 
@@ -517,9 +519,9 @@ class Cluster():
         imputed_data = [list(row) for row in imputer.fit_transform(self.data)]
         imputed_data = [[datatype2impute[self.datatype]["value"](value) for value in row] for row in imputed_data]
         return imputed_data, missing_values_indexes
-        
+
     def normalize_data(self, feature_range=(0,1), write_original=False):
-        """Normalizes data to a scale from 0 to 1. When write_original is set to True, 
+        """Normalizes data to a scale from 0 to 1. When write_original is set to True,
         the normalized data will be clustered, but original data will be written to the heatmap."""
         self.write_original = write_original
         min_max_scaler = preprocessing.MinMaxScaler(feature_range)
@@ -536,7 +538,7 @@ class Cluster():
         print("Clustering rows:", row_distance, row_linkage)
         self.clustering_axis = axis
         row_linkage = str(row_linkage)
-        
+
         if row_linkage in RAW_LINKAGES:
             self.clustering = fastcluster.linkage(self.data, method=row_linkage, metric=row_distance)
 
@@ -558,7 +560,7 @@ class Cluster():
         if axis == "both" and len(self.data[0]) > 2:
             print("Clustering columns:", column_distance, column_linkage)
             self.__cluster_columns__(column_distance, column_linkage)
-        
+
         if self.write_original or self.datatype == "nominal":
             self.data = self.original_data
 
@@ -573,13 +575,13 @@ class Cluster():
         self.data = [list(col) for col in zip(*self.data)]
         if not self.missing_value is False:
             self.data, missing_values_indexes = self.__impute_missing_values__(self.data)
-        
+
         self.column_clustering = fastcluster.linkage(self.data, method=column_linkage, metric=column_distance)
         self.data_order = hcluster.leaves_list(self.column_clustering)
 
         if not self.missing_value is False:
             self.data = self.__return_missing_values__(self.data, missing_values_indexes)
-        
+
         self.data = zip(*self.data)
         self.data = self.__reorder_data__(self.data, self.data_order)
         self.original_data = self.__reorder_data__(self.original_data, self.data_order)
@@ -587,7 +589,7 @@ class Cluster():
             self.header = self.__reorder_data__([self.header], self.data_order)[0]
 
     def __reorder_data__(self, data, order):
-        for i in xrange(len(data)):
+        for i in range(len(data)):
             reordered_data = []
             for j in order:
                 reordered_data.append(data[i][j])
@@ -599,7 +601,7 @@ class Cluster():
 def _process_(arguments):
     c = Cluster()
     c.read_csv(arguments.data_file, arguments.data_delimiter, arguments.data_header, arguments.missing_values, arguments.datatype)
-    
+
     if arguments.normalize:
         c.normalize_data(feature_range=(0,1), write_original=arguments.write_original)
 
@@ -607,16 +609,16 @@ def _process_(arguments):
 
     d = Dendrogram(c)
     d.create_cluster_heatmap(compress=arguments.compress, compressed_value=arguments.compressed_value, write_data=not arguments.dont_write_data)
-    
+
     if arguments.metadata:
         d.add_metadata_from_file(metadata_file=arguments.metadata, delimiter=arguments.metadata_delimiter, header=arguments.metadata_header, metadata_compressed_value=arguments.metadata_compressed_value)
-    
+
     if arguments.column_metadata:
         d.add_column_metadata_from_file(column_metadata_file=arguments.column_metadata, delimiter=arguments.column_metadata_delimiter, header=arguments.column_metadata_header)
 
     if arguments.alternative_data:
         d.add_alternative_data_from_file(alternative_data_file=arguments.alternative_data, delimiter=arguments.alternative_data_delimiter, header=arguments.alternative_data_header, alternative_data_compressed_value=arguments.alternative_data_compressed_value)
-    
+
     if arguments.output_file or arguments.html_dir:
         if arguments.output_file:
             d.export_cluster_heatmap_as_json(arguments.output_file)
@@ -656,7 +658,7 @@ if __name__ == '__main__':
     parser.add_argument("-adh", "--alternative_data_header", default=False, help="whether the first row of alternative data file is a header", action="store_true")
     parser.add_argument("-add", "--alternative_data_delimiter", type=str, default=",", help="delimiter of values in alternative data file")
     parser.add_argument("-adcv", "--alternative_data_compressed_value", type=str, default="median", help="the resulted value from merged rows of alternative data when the data are compressed (median/mean/frequency)")
-    
+
     args = parser.parse_args()
     _process_(args)
-    
+

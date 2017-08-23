@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import json, re, urllib, csv, os, copy
 
 from pygments import highlight
@@ -11,9 +13,9 @@ from django.conf import settings
 
 from examples.models import Examples, SettingsAttributes
 
-from inchlib_forms import InteractiveExampleForm
+from .inchlib_forms import InteractiveExampleForm
 
-import inchlib_clust as clust
+from . import inchlib_clust as clust
 
 try:
     with open(os.path.join(settings.ROOT, "static/source_data/proteins_report.csv"), "r") as pdb_input:
@@ -30,8 +32,8 @@ try:
     with open(os.path.join(settings.ROOT, "static/source_data/example_metadata.csv"), "r") as input_data:
         example_metadata = [r for r in csv.reader(input_data, delimiter=",")]
 
-except Exception, e:
-    print str(e)
+except Exception as e:
+    print(str(e))
     PDB2DATA = {}
     GO2NAME = {}
 
@@ -40,8 +42,8 @@ try:
         reader = csv.DictReader(scaffolds, delimiter=",")
         COMPOUND2SCAFFOLD = {p["chembl_id"]:p["scaffold"] for p in reader}
 
-except Exception, e:
-    print str(e)
+except Exception as e:
+    print(str(e))
     COMPOUND2SCAFFOLD = {}
 
 
@@ -84,13 +86,13 @@ def use_cases(req, exampleid):
     examples = [e for e in Examples.objects.filter(exampletype=3)]
     examples.sort(key=lambda e: e.order)
     example = Examples.objects.get(exampleid=exampleid)
-    
+
     example_settings = example.examplesettings_set.all()
     example_settings = mark_safe(json.dumps(parse_settings({e.settingsattribute.name: e.value for e in example_settings})))
 
     example.description = re.sub('href="', '"'.join(['href=', settings.BASE_URL]), example.description)
     template = "inchlib_use_cases.html"
-    
+
     if exampleid == "16":
         template = "inchlib_use_cases_proteins.html"
     elif exampleid == "17":
@@ -101,7 +103,7 @@ def use_cases(req, exampleid):
         template = "inchlib_use_cases_microarrays.html"
     elif exampleid == "24":
         template = "inchlib_use_cases_fragments.html"
-    
+
     return render_to_response(template, {"examples":examples, "example": example, "settings": example_settings})
 
 def docs(req):
@@ -123,18 +125,18 @@ def get_neighbours(exampleid, examples):
     next = False
     if current != len(ids) - 1:
         next = ids[current+1]
-    
+
     previous = False
     if current > 0:
         previous= ids[current-1]
-        
+
     return next, previous
 
 def parse_settings(example_settings):
     for k, val in example_settings.items():
         try:
             example_settings[k] = float(val)
-        except Exception, e:
+        except Exception as e:
             if val == "True":
                 example_settings[k] = True
 
@@ -146,7 +148,7 @@ def parse_settings(example_settings):
 
             elif val.startswith("{"):
                 example_settings[k] = eval(val)
-    
+
     return example_settings
 
 def get_file_size(filepath):
@@ -229,7 +231,7 @@ def get_pdb_file(req):
             if pdb_data[key]:
                 values = pdb_data[key].split("*")
                 go = values[1].strip(" \n")
-                pdb_data[key] = [go, GO2NAME[go]] 
+                pdb_data[key] = [go, GO2NAME[go]]
             else:
                 pdb_data[key] = ["", ""]
 
@@ -262,7 +264,7 @@ def get_compressed_rows_json_by_node(req):
     row_ids = req.GET.getlist("row_ids[]")
     data = [example_data[0]]
     data.extend([r for r in example_data if r[0] in row_ids])
-    print data
+    print(data)
 
     c = clust.Cluster()
     c.read_data(data, header=True)
